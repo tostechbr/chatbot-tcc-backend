@@ -1,11 +1,13 @@
 require('dotenv').config();
 
 const axios = require('axios');
+const fs = require('fs').promises;
+const path = require('path');
+
 
 const openai = axios.create({
   baseURL: 'https://api.openai.com/v1',
   headers: {
-    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
     'Content-Type': 'application/json',
     'OpenAI-Beta': 'assistants=v1'
   }
@@ -18,9 +20,13 @@ function getOpenAI() {
 
 async function createAssistant() {
   try {
+    // Construa o caminho do arquivo de instruções
+    const instructionsPath = path.join(__dirname, 'instructions.txt');
+    // Leia o conteúdo do arquivo de instruções de forma assíncrona
+    const instructionsContent = await fs.readFile(instructionsPath, 'utf8');
     const response = await openai.post('/assistants', {
-      name: "Math Tutor",
-      instructions: "You are a personal math tutor. Write and run code to answer math questions.",
+      name: "Chatbot-dima",
+      instructions: instructionsContent,
       tools: [{ type: "code_interpreter" }],
       model: "gpt-4-turbo-preview"
     });
