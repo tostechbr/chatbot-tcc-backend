@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
@@ -18,19 +16,43 @@ function getOpenAI() {
   return openai;
 }
 
+async function uploadFile(filePath) {
+  try {
+    const fileContent = await fs.readFile(filePath);
+    const response = await openai.post('/files', fileContent, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      params: {
+        purpose: 'assistants'
+      }
+    });
+    return response.data.id; // Return the file ID from the response
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    throw error;
+  }
+}
+
+
 async function createAssistant() {
   try {
-    // Construa o caminho do arquivo de instruções
+    const filePath = path.join(__dirname, 'src', 'api', 'ConvertCodeToPromptBuilderFormat.md');
+    const fileId = await uploadFile(filePath); 
+
     const instructionsPath = path.join(__dirname, 'instructions.txt');
-    // Leia o conteúdo do arquivo de instruções de forma assíncrona
     const instructionsContent = await fs.readFile(instructionsPath, 'utf8');
+
     const response = await openai.post('/assistants', {
       name: "Chatbot-dima",
       instructions: instructionsContent,
       tools: [{ type: "code_interpreter" }],
-      model: "gpt-4-turbo-preview"
+      model: "gpt-4-turbo-preview",
+      file_ids: [fileId]
     });
+
     return response.data;
+
   } catch (error) {
     console.error('Erro ao criar assistente:', error);
     throw error;
@@ -66,15 +88,9 @@ async function createThread() {
     return response.data;
   } catch (error) {
     if (error.response) {
-      // A solicitação foi feita e o servidor respondeu com um status fora do intervalo 2xx
-      console.log(error.response.data); // Log do corpo da resposta de erro
-      console.log(error.response.status); // Log do status do erro
-      console.log(error.response.headers); // Log dos cabeçalhos da resposta
     } else if (error.request) {
-      // A solicitação foi feita, mas nenhuma resposta foi recebida
       console.log(error.request);
     } else {
-      // Algo aconteceu na configuração da solicitação que acionou um erro
       console.log('Error', error.message);
     }
     throw error;
